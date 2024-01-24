@@ -1,3 +1,4 @@
+use colored::Colorize;
 use std::env::args;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -22,32 +23,41 @@ fn main() {
         return;
     }
 
-    let path_str = &args[1];
-    let path = PathBuf::from(path_str);
-    let dir_name = match path.canonicalize() {
-        Ok(full_path) => full_path,
-        Err(e) => {
-            println!("Error: {}", e);
+    for (i, _) in args.iter().enumerate() {
+        if i == 0 {
+            continue;
+        }
+        let path_str = &args[i];
+        let path = PathBuf::from(path_str);
+        let dir_name = match path.canonicalize() {
+            Ok(full_path) => full_path,
+            Err(e) => {
+                println!("Error: {}", e);
+                return;
+            }
+        };
+
+        if !path.exists() {
+            println!("Path does not exist");
             return;
         }
-    };
 
-    if !path.exists() {
-        println!("Path does not exist");
-        return;
-    }
+        let metadata = path.metadata().unwrap();
+        if !metadata.is_dir() {
+            let size = metadata.len() as f64;
+            println!(
+                "{}: {:.1} MB",
+                dir_name.to_str().unwrap(),
+                size / 1024.0 / 1024.0
+            );
+            return;
+        }
 
-    let metadata = path.metadata().unwrap();
-    if !metadata.is_dir() {
-        let size = metadata.len() as f64;
+        let size = get_dir_size(&path);
         println!(
             "{}: {:.1} MB",
-            dir_name.to_str().unwrap(),
-            size / 1024.0 / 1024.0
+            dir_name.to_str().unwrap().bright_purple(),
+            size
         );
-        return;
     }
-
-    let size = get_dir_size(&path);
-    println!("{}: {:.1} MB", dir_name.to_str().unwrap(), size);
 }
