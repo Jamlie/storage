@@ -1,10 +1,17 @@
+mod utils;
+
 use colored::Colorize;
 use std::env::args;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-fn get_dir_size(path: &Path) -> f64 {
+fn size_in_mb(path: &Path) -> f64 {
     let mut size = 0.0;
+    if utils::is_file(&path) {
+        size = utils::file_size(&path) as f64;
+        return size / 1024.0 / 1024.0;
+    }
+
     for entry in WalkDir::new(&path) {
         let entry = entry.unwrap();
         let metadata = entry.metadata().unwrap();
@@ -16,48 +23,38 @@ fn get_dir_size(path: &Path) -> f64 {
     return size / 1024.0 / 1024.0;
 }
 
-fn main() {
-    let args: Vec<String> = args().collect();
-    if args.len() < 2 {
-        println!("Usage: {} <path>", args[0]);
-        return;
-    }
-
+fn execute(args: Vec<String>) {
     for (i, _) in args.iter().enumerate() {
         if i == 0 {
             continue;
         }
         let path_str = &args[i];
         let path = PathBuf::from(path_str);
-        let dir_name = match path.canonicalize() {
-            Ok(full_path) => full_path,
-            Err(e) => {
-                println!("Error: {}", e);
-                return;
-            }
-        };
-
+        let full_path = utils::get_full_path(&path);
         if !path.exists() {
-            println!("Path does not exist");
+            eprintln!("{}", "Path does not exist".red());
             return;
         }
 
-        let metadata = path.metadata().unwrap();
-        if !metadata.is_dir() {
-            let size = metadata.len() as f64;
-            println!(
-                "{}: {:.1} MB",
-                dir_name.to_str().unwrap(),
-                size / 1024.0 / 1024.0
-            );
-            return;
-        }
-
-        let size = get_dir_size(&path);
+        let size = size_in_mb(&path);
         println!(
             "{}: {:.1} MB",
-            dir_name.to_str().unwrap().bright_purple(),
+            if utils::is_file(&path) {
+                full_path.to_str().unwrap().bright_yellow()
+            } else {
+                full_path.to_str().unwrap().bright_cyan()
+            },
             size
         );
     }
+}
+
+fn main() {
+    let args: Vec<String> = args().collect();
+    if args.len() < 2 {
+        eprintln!("{}", format!("Usage: {} <path> ...", args[0]).red());
+        return;
+    }
+
+    execute(args);
 }
